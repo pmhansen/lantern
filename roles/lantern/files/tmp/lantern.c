@@ -15,6 +15,7 @@
 
 #define LIGHT_OFF 100
 #define LIGHT_ON 10
+#define OCCUPANCY_DELAY 600
 
 struct Lantern {
     char relay_state[4];
@@ -23,6 +24,7 @@ struct Lantern {
     int illuminance_lux;
     int occupancy;
     double temperature;
+    time_t occupancy_timestamp;
 };
 
 struct Lantern data;
@@ -63,20 +65,36 @@ void messageCallback(struct mosquitto *mosq, void *userdata, const struct mosqui
         data.illuminance_lux = (int)json_integer_value(lux_value);
     }
 
+    json_t *occupancy_value = json_object_get(json, "occupancy");
+    if (occupancy_value && json_is_boolean(occupancy_value)) {
+        data.occupancy = json_is_true(occupancy_value) ? 1 : 0;
+    }
+
     time_t now;
     struct tm *local_time;
     time(&now);
     local_time = localtime(&now);
 
-    // Turn on light if it is dark and time is after 5:00
-    if (data.illuminance_lux < LIGHT_ON && local_time->tm_hour >= 5 && strcmp(data.relay_state, "OFF") == 0) {
-        fprintf(stdout, "Turn lights on\n");
-        setRelayState(mosq, "ON");
+    int time_diff = OCCUPANCY_DELAY;
+    if (data.occupancy) {
+        data.occupancy_timestamp = now;
+    } else {
+        time_diff = difftime(now, data.occupancy_timestamp);
     }
-    // Turn off light if there are daylight or time is after 23:00
-    else if ((data.illuminance_lux > LIGHT_OFF || local_time->tm_hour >= 23) && strcmp(data.relay_state, "ON") == 0) {
-        fprintf(stdout, "Turn lights off\n");
-        setRelayState(mosq, "OFF");
+
+    // Turn on light if it is dark and time is before 23:00 or after 5:00 or there is occupancy
+    if (data.illuminance_lux < LIGHT_ON 
+        && ((local_time->tm_hour < 23 && local_time->tm_hour >= 5) || data.occupancy)
+        && strcmp(data.relay_state, "OFF") == 0) {
+            fprintf(stdout, "Turn lights on\n");
+            setRelayState(mosq, "ON");
+    }
+    // Turn off light if there is daylight or time is after 23:00 or time is before 5 or occupancy delay has expired.
+    else if ((data.illuminance_lux > LIGHT_OFF || local_time->tm_hour >= 23 || local_time->tm_hour < 5)
+        && time_diff >= OCCUPANCY_DELAY 
+        && strcmp(data.relay_state, "ON") == 0) {
+            fprintf(stdout, "Turn lights off\n");
+            setRelayState(mosq, "OFF");
     }
 
     // Cleanup json object
