@@ -1,0 +1,32 @@
+- name: Copy PHP scripts
+  copy:
+    src: 'var/www/html/{{ item }}'
+    dest: '/var/www/html/{{ item }}'
+  loop:
+    - wakeonlan.php
+    - phpconf.php
+
+- name: Copy sudoers.d file
+  copy:
+    src: etc/sudoers.d/wakeonlan
+    dest: /etc/sudoers.d/wakeonlan
+
+- name: Copy PHP setup file
+  copy:
+    src: 'etc/nginx/snippets/php.conf'
+    dest: '/etc/nginx/snippets/php.conf'
+
+- name: Check if NGINX configuration needs change
+  command: grep -q 'include snippets/php.conf;' /etc/nginx/sites-available/default
+  register: grep_result
+  failed_when: false
+
+- name: Edit NGINX configuration
+  command: >
+    sed -i "/# include snippets\/snakeoil.conf;/a\ \tinclude snippets/php.conf;" /etc/nginx/sites-available/default
+  when: grep_result.rc != 0
+
+- name: Restart NGINX service
+  systemd:
+    name: nginx
+    state: restarted

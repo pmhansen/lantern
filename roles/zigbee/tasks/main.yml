@@ -1,0 +1,66 @@
+- name: Add zigbee user
+  user:
+    name: zigbee
+    comment: System user Zigbee2MQTT
+    groups: nogroup, dialout
+    system: yes
+    append: yes
+
+- name: Create zigbee2mqtt folder
+  file:
+    path: /opt/zigbee2mqtt
+    state: directory
+
+- name: Git config
+  community.general.git_config:
+    name: safe.directory
+    scope: global
+    value: /opt/zigbee2mqtt
+
+- name: Clone git repository
+  git:
+    repo: https://github.com/Koenkk/zigbee2mqtt.git
+    dest: /opt/zigbee2mqtt
+    depth: 1
+    force: true
+
+- name: Copy zigbee configuration
+  template:
+    src: 'opt/zigbee2mqtt/data/configuration.yaml'
+    dest: '/opt/zigbee2mqtt/data/configuration.yaml'
+
+- name: Copy zigbee database file
+  copy:
+    src: 'opt/zigbee2mqtt/data/database.db'
+    dest: '/opt/zigbee2mqtt/data/database.db'
+
+- name: Running npm ci
+  community.general.npm:
+    path: /opt/zigbee2mqtt
+    ci: true
+
+- name: Run npm build
+  shell: |
+    npm run build
+  args:
+    executable: /bin/bash
+    chdir: /opt/zigbee2mqtt
+
+- name: Set folder ownership
+  file:
+    path: /opt/zigbee2mqtt
+    owner: zigbee
+    group: zigbee
+    recurse: yes
+
+- name: Copy zigbee systemd service file
+  copy:
+    src: 'etc/systemd/system/zigbee2mqtt.service'
+    dest: '/etc/systemd/system/zigbee2mqtt.service'
+
+- name: Start Zigbee2MQTT service
+  systemd:
+    name: zigbee2mqtt
+    daemon_reload: true
+    state: started
+    enabled: true

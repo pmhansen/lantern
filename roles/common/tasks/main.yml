@@ -1,0 +1,52 @@
+- name: Add gpg key for nodejs
+  apt_key:
+    url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+    keyring: /etc/apt/keyrings/nodesource.gpg
+
+- name: Add nodejs repository
+  apt_repository:
+    repo: deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main
+    state: present
+
+- name: Install needed packages
+  apt:
+    update_cache: yes
+    state: latest
+    pkg:
+        - mc
+        - apt-show-versions
+        - nginx
+        - php-fpm
+        - wakeonlan
+        - mosquitto
+        - mosquitto-clients
+        - git
+        - make
+        - g++
+        - gcc
+        - nodejs
+        - libmosquitto-dev
+        - libjansson-dev
+
+- name: Set hostname
+  hostname:
+    name: '{{ ansible_host }}'
+
+- name: Update /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: '127.0.1.1       {{ ansible_host }}'
+
+- name: Configure the locale
+  lineinfile:
+    path: /etc/locale.gen
+    regexp: '^#? *da_DK\.UTF-8 UTF-8$'
+    line: 'da_DK.UTF-8 UTF-8'
+
+- name: Configure da_DK.UTF-8 locale
+  command: locale-gen
+
+- name: Set timezone
+  community.general.timezone:
+    name: Europe/Copenhagen

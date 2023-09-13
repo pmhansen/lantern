@@ -1,0 +1,35 @@
+- hosts: all
+  name: Run common tasks
+  become: true
+  tags:
+    - 'common'
+  tasks:
+    - import_role:
+        name: common
+
+- hosts: all
+  name: Nginx with WOL setup
+  become: true
+  tags:
+    - 'nginx'
+  tasks:
+    - import_role:
+        name: nginx
+
+- hosts: all
+  name: Zigbee2MQTT setup
+  become: true
+  tags:
+    - 'zigbee'
+  tasks:
+    - import_role:
+        name: zigbee
+
+- hosts: all
+  name: Lantern setup
+  become: true
+  tags:
+    - 'lantern'
+  tasks:
+    - import_role:
+        name: lantern

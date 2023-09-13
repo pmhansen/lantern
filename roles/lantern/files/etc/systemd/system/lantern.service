@@ -1,0 +1,14 @@
+[Unit]
+Description=lantern
+After=network.target
+
+[Service]
+ExecStart=/usr/local/sbin/lantern
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+RestartSec=10s
+User=zigbee
+
+[Install]
+WantedBy=multi-user.target

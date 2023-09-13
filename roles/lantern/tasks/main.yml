@@ -1,0 +1,27 @@
+- name: Copy lantern source files
+  copy:
+    src: 'tmp/{{ item }}'
+    dest: '/tmp/{{ item }}'
+  loop:
+    - lantern.c
+    - Makefile
+  
+- name: Run make and build lantern
+  command: make
+  args:
+    chdir: /tmp
+
+- name: Copy lantern app to destination
+  copy: remote_src=True src=/tmp/lantern dest=/usr/local/sbin/lantern mode='0755'
+
+- name: Copy lantern systemd service file
+  copy:
+    src: 'etc/systemd/system/lantern.service'
+    dest: '/etc/systemd/system/lantern.service'
+
+- name: Start lantern service
+  systemd:
+    name: lantern
+    daemon_reload: true
+    state: started
+    enabled: true
