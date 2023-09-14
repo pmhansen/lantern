@@ -46,6 +46,15 @@
     executable: /bin/bash
     chdir: /opt/zigbee2mqtt
 
+- name: Ensure state.json file exists
+  command: touch /tmp/state.json
+
+- name: Create state file symbolic link
+  file:
+    src: /tmp/state.json
+    dest: /opt/zigbee2mqtt/data/state.json
+    state: link
+
 - name: Set folder ownership
   file:
     path: /opt/zigbee2mqtt

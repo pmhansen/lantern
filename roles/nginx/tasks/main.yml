@@ -26,6 +26,25 @@
     sed -i "/# include snippets\/snakeoil.conf;/a\ \tinclude snippets/php.conf;" /etc/nginx/sites-available/default
   when: grep_result.rc != 0
 
+- name: Create systemd override directory if it doesn't exist
+  file:
+    path: /etc/systemd/system/nginx.service.d
+    state: directory
+
+- name: Create systemd override file with ExecStartPre
+  copy:
+    content: |
+      [Service]
+      ExecStartPre=/bin/mkdir -p /var/log/nginx
+      ExecStartPre=/bin/chown -R www-data:www-data /var/log/nginx
+    dest: /etc/systemd/system/nginx.service.d/override.conf
+
+- name: Reload systemd daemon
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: ""
+
 - name: Restart NGINX service
   systemd:
     name: nginx

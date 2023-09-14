@@ -1,3 +1,21 @@
+- name: Uninstall swapfile
+  command: dphys-swapfile uninstall
+
+- name: Copy fstab
+  copy:
+    src: 'etc/fstab'
+    dest: '/etc/fstab'
+
+- name: Copy systemd-journald configuration
+  copy:
+    src: 'etc/systemd/journald.conf.d/lantern.conf'
+    dest: '/etc/systemd/journald.conf.d/lantern.conf'
+
+- name: Restart systemd-journald service
+  systemd:
+    name: systemd-journald
+    state: restarted
+
 - name: Add gpg key for nodejs
   apt_key:
     url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
