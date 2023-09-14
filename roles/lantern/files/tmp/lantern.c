@@ -10,12 +10,12 @@
 #define MQTT_KEEPALIVE_INTERVAL 60
 #define MQTT_RELAY_TOPIC "zigbee2mqtt/relay_driveway_light"
 #define MQTT_SENSOR_TOPIC "zigbee2mqtt/occupancy_sensor_driveway"
-#define QOS 1
-#define RETAIN 0
+#define QOS 1               // MQTT qos.
+#define RETAIN 0            // Do not retain message in queue.
 
-#define LIGHT_OFF 100
-#define LIGHT_ON 10
-#define OCCUPANCY_DELAY 600
+#define LIGHT_OFF 100       // lux
+#define LIGHT_ON 10         // lux
+#define OCCUPANCY_DELAY 600 // seconds
 
 struct Lantern {
     char relay_state[4];
@@ -77,23 +77,27 @@ void messageCallback(struct mosquitto *mosq, void *userdata, const struct mosqui
 
     int time_diff = OCCUPANCY_DELAY;
     if (data.occupancy) {
+        fprintf(stdout, "movement detected\n");
         data.occupancy_timestamp = now;
     } else {
         time_diff = difftime(now, data.occupancy_timestamp);
     }
 
+    fprintf(stdout, "lux: %d, hour: %d, occupancy: %d, relay_state: %s\n", 
+        data.illuminance_lux, local_time->tm_hour, data.occupancy, data.relay_state);
+
     // Turn on light if it is dark and time is before 23:00 or after 5:00 or there is occupancy
     if (data.illuminance_lux < LIGHT_ON 
         && ((local_time->tm_hour < 23 && local_time->tm_hour >= 5) || data.occupancy)
         && strcmp(data.relay_state, "OFF") == 0) {
-            fprintf(stdout, "Turn lights on\n");
+            fprintf(stdout, "turn lights on\n");
             setRelayState(mosq, "ON");
     }
     // Turn off light if there is daylight or time is after 23:00 or time is before 5 or occupancy delay has expired.
     else if ((data.illuminance_lux > LIGHT_OFF || local_time->tm_hour >= 23 || local_time->tm_hour < 5)
         && time_diff >= OCCUPANCY_DELAY 
         && strcmp(data.relay_state, "ON") == 0) {
-            fprintf(stdout, "Turn lights off\n");
+            fprintf(stdout, "turn lights off\n");
             setRelayState(mosq, "OFF");
     }
 
