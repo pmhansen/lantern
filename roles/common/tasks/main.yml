@@ -1,3 +1,8 @@
+- name: Create data folder
+  file:
+    path: /data
+    state: directory
+
 - name: Uninstall swapfile
   command: dphys-swapfile uninstall
 
@@ -5,6 +10,45 @@
   copy:
     src: 'etc/fstab'
     dest: '/etc/fstab'
+
+- name: Mount data directory
+  mount:
+    src: /dev/mmcblk0p3
+    path: /data
+    fstype: ext4
+    state: mounted
+
+- name: Create dhcp directory
+  file:
+    path: /data/dhcp
+    state: directory
+
+- name: Create dhcpcd directory
+  file:
+    path: /data/dhcpcd
+    state: directory
+
+- name: Remove old dhcp folder
+  file:
+    path: /var/lib/dhcp
+    state: absent
+
+- name: Remove old dhcpcd folder
+  file:
+    path: /var/lib/dhcpcd
+    state: absent
+
+- name: Create dhcp directory symbolic link
+  file:
+    src: /data/dhcp
+    dest: /var/lib/dhcp
+    state: link
+
+- name: Create dhcpcd directory symbolic link
+  file:
+    src: /data/dhcpcd
+    dest: /var/lib/dhcpcd
+    state: link
 
 - name: Copy systemd-journald configuration
   copy:

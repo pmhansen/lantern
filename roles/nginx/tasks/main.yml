@@ -31,13 +31,14 @@
     path: /etc/systemd/system/nginx.service.d
     state: directory
 
-- name: Create systemd override file with ExecStartPre
-  copy:
-    content: |
+- name: Insert Nginx preconditions
+  blockinfile:
+    path: /lib/systemd/system/nginx.service
+    block: |
       [Service]
       ExecStartPre=/bin/mkdir -p /var/log/nginx
       ExecStartPre=/bin/chown -R www-data:www-data /var/log/nginx
-    dest: /etc/systemd/system/nginx.service.d/override.conf
+    insertbefore: '^ExecStartPre='
 
 - name: Reload systemd daemon
   systemd:

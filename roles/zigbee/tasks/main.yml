@@ -6,9 +6,21 @@
     system: yes
     append: yes
 
-- name: Create zigbee2mqtt folder
+- name: Create zigbee2mqtt directory
   file:
     path: /opt/zigbee2mqtt
+    state: directory
+
+- name: Create mosquitto data directory
+  file:
+    path: /data/mosquitto
+    owner: mosquitto
+    group: mosquitto
+    state: directory
+
+- name: Create zigbee2mqtt data directory
+  file:
+    path: /data/zigbee2mqtt/data
     state: directory
 
 - name: Git config
@@ -27,12 +39,12 @@
 - name: Copy zigbee configuration
   template:
     src: 'opt/zigbee2mqtt/data/configuration.yaml'
-    dest: '/opt/zigbee2mqtt/data/configuration.yaml'
+    dest: '/data/zigbee2mqtt/data/configuration.yaml'
 
 - name: Copy zigbee database file
   copy:
     src: 'opt/zigbee2mqtt/data/database.db'
-    dest: '/opt/zigbee2mqtt/data/database.db'
+    dest: '/data/zigbee2mqtt/data/database.db'
 
 - name: Running npm ci
   community.general.npm:
@@ -46,16 +58,29 @@
     executable: /bin/bash
     chdir: /opt/zigbee2mqtt
 
-- name: Ensure state.json file exists
-  command: touch /tmp/state.json
-
-- name: Create state file symbolic link
+- name: Remove old mosquitto folder
   file:
-    src: /tmp/state.json
-    dest: /opt/zigbee2mqtt/data/state.json
+    path: /var/lib/mosquitto
+    state: absent
+
+- name: Remove old data folder
+  file:
+    path: /opt/zigbee2mqtt/data
+    state: absent
+
+- name: Create mosquitto directory symbolic link
+  file:
+    src: /data/mosquitto
+    dest: /var/lib/mosquitto
     state: link
 
-- name: Set folder ownership
+- name: Create data directory symbolic link
+  file:
+    src: /data/zigbee2mqtt/data
+    dest: /opt/zigbee2mqtt/data
+    state: link
+
+- name: Set directory ownership
   file:
     path: /opt/zigbee2mqtt
     owner: zigbee
