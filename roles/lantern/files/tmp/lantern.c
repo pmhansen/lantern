@@ -5,17 +5,18 @@
 #include <jansson.h>
 #include <time.h>
 
-#define MQTT_BROKER_ADDRESS "rpi001"
-#define MQTT_PORT 1883
-#define MQTT_KEEPALIVE_INTERVAL 60
-#define MQTT_RELAY_TOPIC "zigbee2mqtt/relay_driveway_light"
-#define MQTT_SENSOR_TOPIC "zigbee2mqtt/occupancy_sensor_driveway"
-#define QOS 1               // MQTT qos.
-#define RETAIN 0            // Do not retain message in queue.
+#define MQTT_BROKER_ADDRESS             "127.0.0.1"
+#define MQTT_PORT 1883      
+#define MQTT_KEEPALIVE_INTERVAL 60  
+#define MQTT_RELAY_TOPIC                "zigbee2mqtt/relay_driveway_light"
+#define MQTT_SENSOR_TOPIC               "zigbee2mqtt/occupancy_sensor_driveway"
+#define QOS 1                           // MQTT qos.
+#define RETAIN 0                        // Do not retain message in queue.
 
-#define LIGHT_OFF 100       // lux
-#define LIGHT_ON 10         // lux
-#define OCCUPANCY_DELAY 600 // seconds
+#define LIGHT_OFF 100                   // lux
+#define LIGHT_ON 10                     // lux
+#define OCCUPANCY_DELAY 600             // seconds before turning lights off again.
+#define OCCUPANCY_DELAY_SINCE_CHANGE 60 // seconds to disable occupancy since lights change.
 
 struct Lantern {
     char relay_state[4];
@@ -24,6 +25,7 @@ struct Lantern {
     int illuminance_lux;
     int occupancy;
     double temperature;
+    time_t change_timestamp;
     time_t occupancy_timestamp;
 };
 
@@ -75,30 +77,43 @@ void messageCallback(struct mosquitto *mosq, void *userdata, const struct mosqui
     time(&now);
     local_time = localtime(&now);
 
-    int time_diff = OCCUPANCY_DELAY;
-    if (data.occupancy) {
-        fprintf(stdout, "movement detected\n");
-        data.occupancy_timestamp = now;
-    } else {
-        time_diff = difftime(now, data.occupancy_timestamp);
-    }
-
     fprintf(stdout, "lux: %d, hour: %d, occupancy: %d, relay_state: %s\n", 
         data.illuminance_lux, local_time->tm_hour, data.occupancy, data.relay_state);
 
-    // Turn on light if it is dark and time is before 23:00 or after 5:00 or there is occupancy
-    if (data.illuminance_lux < LIGHT_ON 
-        && ((local_time->tm_hour < 23 && local_time->tm_hour >= 5) || data.occupancy)
-        && strcmp(data.relay_state, "OFF") == 0) {
-            fprintf(stdout, "turn lights on\n");
-            setRelayState(mosq, "ON");
+    if (data.occupancy) {
+        if (now - data.change_timestamp < OCCUPANCY_DELAY_SINCE_CHANGE) {
+            fprintf(stderr, "light state just changed, ignoring occupancy detection.\n");
+            return;
+        }
+        fprintf(stdout, "movement detected\n");
+        data.occupancy_timestamp = now;
+    } else {
+        if (data.occupancy_timestamp > 0 && now - data.occupancy_timestamp > OCCUPANCY_DELAY) {
+            fprintf(stdout, "movement delay ran out\n");
+            data.occupancy_timestamp = 0;
+        }
+
+        // movement delay has not expired yet.
+        if (data.occupancy_timestamp > 0) {
+            return;
+        }
     }
-    // Turn off light if there is daylight or time is after 23:00 or time is before 5 or occupancy delay has expired.
-    else if ((data.illuminance_lux > LIGHT_OFF || local_time->tm_hour >= 23 || local_time->tm_hour < 5)
-        && time_diff >= OCCUPANCY_DELAY 
-        && strcmp(data.relay_state, "ON") == 0) {
+
+    // Turn on light if it is dark and time is before 23:00 or after 5:00 or movement is detected.
+    if (data.illuminance_lux < LIGHT_ON && strcmp(data.relay_state, "OFF") == 0) { 
+        if ((local_time->tm_hour < 23 && local_time->tm_hour >= 5) || data.occupancy) {
+            fprintf(stdout, "turn lights on\n");
+            data.change_timestamp = now;            
+            setRelayState(mosq, "ON");
+        }
+    }
+    // Turn off light if there is daylight or time is after 23:00 or time is before 5.
+    else if (strcmp(data.relay_state, "ON") == 0) {
+        if (data.illuminance_lux > LIGHT_OFF || local_time->tm_hour >= 23 || local_time->tm_hour < 5) {
             fprintf(stdout, "turn lights off\n");
+            data.change_timestamp = now;            
             setRelayState(mosq, "OFF");
+        }
     }
 
     // Cleanup json object
