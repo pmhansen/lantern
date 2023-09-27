@@ -1,6 +1,6 @@
 homeassistant: false
 frontend:
-  auth_token: {{ frontend.auth_token }} 
+  auth_token: jakAHq2QdGrqfdu1QWnj
 mqtt:
   base_topic: zigbee2mqtt
   server: mqtt://localhost
@@ -38,7 +38,8 @@ advanced:
   legacy_api: false
   legacy_availability_payload: false
   log_level: info
-  log_output: [console]
+  log_output:
+    - console
 device_options:
   legacy: false
 devices:
@@ -46,3 +47,5 @@ devices:
     friendly_name: occupancy_sensor_driveway
   '0x003c84fffece16a6':
     friendly_name: relay_driveway_light
+  '0x00124b00258a72f0':
+    friendly_name: relay_light_shelf

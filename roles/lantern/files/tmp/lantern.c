@@ -8,7 +8,8 @@
 #define MQTT_BROKER_ADDRESS             "127.0.0.1"
 #define MQTT_PORT 1883      
 #define MQTT_KEEPALIVE_INTERVAL 60  
-#define MQTT_RELAY_TOPIC                "zigbee2mqtt/relay_driveway_light"
+#define MQTT_RELAY_DRIVEWAY             "zigbee2mqtt/relay_driveway_light"
+#define MQTT_RELAY_LIGHT_SHELF          "zigbee2mqtt/relay_light_shelf"
 #define MQTT_SENSOR_TOPIC               "zigbee2mqtt/occupancy_sensor_driveway"
 #define QOS 1                           // MQTT qos.
 #define RETAIN 0                        // Do not retain message in queue.
@@ -36,7 +37,12 @@ void setRelayState(struct mosquitto *mosq, const char* state) {
     snprintf(msg, sizeof(msg), "{\"state\":\"%s\"}", state);
 
     char topic[50];
-    snprintf(topic, sizeof(topic), "%s/set", MQTT_RELAY_TOPIC);
+    snprintf(topic, sizeof(topic), "%s/set", MQTT_RELAY_DRIVEWAY);
+    if (mosquitto_publish(mosq, NULL, topic, (int)strlen(msg), msg, QOS, RETAIN)) {
+        fprintf(stderr, "Failed to publish message");
+    }
+
+    snprintf(topic, sizeof(topic), "%s/set", MQTT_RELAY_LIGHT_SHELF);
     if (mosquitto_publish(mosq, NULL, topic, (int)strlen(msg), msg, QOS, RETAIN)) {
         fprintf(stderr, "Failed to publish message");
     }
@@ -137,7 +143,8 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    mosquitto_subscribe(mosq, NULL, MQTT_RELAY_TOPIC, 0);
+    mosquitto_subscribe(mosq, NULL, MQTT_RELAY_DRIVEWAY, 0);
+    mosquitto_subscribe(mosq, NULL, MQTT_RELAY_LIGHT_SHELF, 0);
     mosquitto_subscribe(mosq, NULL, MQTT_SENSOR_TOPIC, 0);
 
     memset(&data, 0, sizeof(struct Lantern));
