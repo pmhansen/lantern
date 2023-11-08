@@ -36,15 +36,22 @@ void setRelayState(struct mosquitto *mosq, const char* state) {
     char msg[20];
     snprintf(msg, sizeof(msg), "{\"state\":\"%s\"}", state);
 
+    /*
+     * Sometimes the relay fails to receive state change.
+     * As a remedy we try to send the message three times.
+     */ 
+    int i;
     char topic[50];
-    snprintf(topic, sizeof(topic), "%s/set", MQTT_RELAY_DRIVEWAY);
-    if (mosquitto_publish(mosq, NULL, topic, (int)strlen(msg), msg, QOS, RETAIN)) {
-        fprintf(stderr, "Failed to publish message");
-    }
+    for (i = 0; i < 3; i++) {
+        snprintf(topic, sizeof(topic), "%s/set", MQTT_RELAY_DRIVEWAY);
+        if (mosquitto_publish(mosq, NULL, topic, (int)strlen(msg), msg, QOS, RETAIN)) {
+            fprintf(stderr, "Failed to publish message");
+        }
 
-    snprintf(topic, sizeof(topic), "%s/set", MQTT_RELAY_LIGHT_SHELF);
-    if (mosquitto_publish(mosq, NULL, topic, (int)strlen(msg), msg, QOS, RETAIN)) {
-        fprintf(stderr, "Failed to publish message");
+        snprintf(topic, sizeof(topic), "%s/set", MQTT_RELAY_LIGHT_SHELF);
+        if (mosquitto_publish(mosq, NULL, topic, (int)strlen(msg), msg, QOS, RETAIN)) {
+            fprintf(stderr, "Failed to publish message");
+        }
     }
 }
 
